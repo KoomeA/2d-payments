@@ -1,0 +1,86 @@
+const express = require('express');
+const serverless = require('serverless-http');
+const cors = require('cors');
+const paypal = require('@paypal/checkout-server-sdk');
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// PayPal environment setup
+function client() {
+    return new paypal.core.PayPalHttpClient(environment());
+}
+
+function environment() {
+    const clientId = process.env.PAYPAL_CLIENT_ID;
+    const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+        throw new Error('PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET must be set in environment variables');
+    }
+
+    if (process.env.NODE_ENV === 'production') {
+        return new paypal.core.LiveEnvironment(clientId, clientSecret);
+    } else {
+        return new paypal.core.SandboxEnvironment(clientId, clientSecret);
+    }
+}
+
+// Create Order API
+app.post('/api/payment/create-order', async (req, res) => {
+    try {
+        const { amount, currency = 'USD' } = req.body;
+
+        if (!amount || parseFloat(amount) <= 0) {
+            return res.status(400).json({ error: 'Invalid amount' });
+        }
+
+        const request = new paypal.orders.OrdersCreateRequest();
+        request.prefer("return=representation");
+        request.requestBody({
+            intent: 'CAPTURE',
+            purchase_units: [{
+                amount: {
+                    currency_code: currency,
+                    value: parseFloat(amount).toFixed(2)
+                }
+            }]
+        });
+
+        const response = await client().execute(request);
+        res.json({ id: response.result.id });
+    } catch (error) {
+        console.error('Error creating order:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Capture Order API
+app.post('/api/payment/capture-order', async (req, res) => {
+    try {
+        const { orderID } = req.body;
+
+        if (!orderID) {
+            return res.status(400).json({ error: 'Order ID is required' });
+        }
+
+        const request = new paypal.orders.OrdersCaptureRequest(orderID);
+        request.requestBody({});
+
+        const response = await client().execute(request);
+        res.json(response.result);
+    } catch (error) {
+        console.error('Error capturing order:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', message: 'Payment API is running' });
+});
+
+module.exports.handler = serverless(app);
