@@ -41,7 +41,7 @@ Edit `.env` and add your PayPal credentials:
 ```
 PAYPAL_CLIENT_ID=your_sandbox_client_id
 PAYPAL_CLIENT_SECRET=your_sandbox_client_secret
-NODE_ENV=development
+PAYPAL_MODE=sandbox
 ```
 
 ### 3. Update Frontend Client ID
