@@ -9,3 +9,7 @@
 
 [functions]
   node_bundler = "esbuild"
+
+[secrets]
+  # Ignore NODE_ENV from secrets scanning as it's a standard environment variable
+  omitKeys = ["NODE_ENV"]
