@@ -27,7 +27,8 @@ function environment() {
         throw new Error('PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET must be set in environment variables');
     }
 
-    if (process.env.NODE_ENV === 'production') {
+    // Use live mode if PAYPAL_MODE is set to 'live', otherwise use sandbox
+    if (process.env.PAYPAL_MODE === 'live') {
         return new paypal.core.LiveEnvironment(clientId, clientSecret);
     } else {
         return new paypal.core.SandboxEnvironment(clientId, clientSecret);
