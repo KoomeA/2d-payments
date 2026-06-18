@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayPal Payment Processor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .amount-section {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .amount-label {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .amount-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            transition: border-color 0.3s;
+        }
+
+        .amount-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .currency-select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            color: #333;
+            margin-top: 10px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .currency-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .paypal-button-container {
+            margin-top: 25px;
+        }
+
+        #paypal-button-container {
+            min-height: 45px;
+        }
+
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .card-info {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .card-info strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PayPal Payment</h1>
+        <p class="subtitle">Secure 2D card payment processing</p>
+
+        <div class="card-info">
+            <strong>ℹ️ 2D Card Payments</strong>
+            This processor handles standard card payments without 3D Secure authentication. Ensure your PayPal account supports 2D transactions.
+        </div>
+
+        <div class="amount-section">
+            <label class="amount-label" for="amount">Payment Amount</label>
+            <input 
+                type="number" 
+                id="amount" 
+                class="amount-input" 
+                placeholder="10.00" 
+                min="0.01" 
+                step="0.01" 
+                value="10.00"
+            >
+            <select id="currency" class="currency-select">
+                <option value="USD">USD - US Dollar</option>
+                <option value="EUR">EUR - Euro</option>
+                <option value="GBP">GBP - British Pound</option>
+                <option value="CAD">CAD - Canadian Dollar</option>
+                <option value="AUD">AUD - Australian Dollar</option>
+            </select>
+        </div>
+
+        <div class="paypal-button-container">
+            <div id="paypal-button-container"></div>
+        </div>
+
+        <div id="status-message" class="status-message"></div>
+    </div>
+
+    <script src="https://www.paypal.com/sdk/js?client-id=Ac8Wb9V4Q-hobsV50jG9WO5sBipADY0q3p0z88e1gwoXlAozfegdZyRYW9MOIHCeg56Gt1sT5b_TE54Y&currency=USD"></script>
+    <script>
+        // Replace YOUR_PAYPAL_CLIENT_ID with your actual PayPal Client ID
+        // Get it from: https://developer.paypal.com/dashboard/applications/live
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.className = `status-message ${type}`;
+            statusDiv.style.display = 'block';
+            
+            if (type === 'info') {
+                statusDiv.innerHTML = `<span class="loading"></span>${message}`;
+            } else {
+                statusDiv.textContent = message;
+            }
+        }
+
+        function hideStatus() {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.style.display = 'none';
+        }
+
+        paypal.Buttons({
+            style: {
+                layout: 'vertical',
+                color:  'gold',
+                shape:  'rect',
+                label:  'paypal'
+            },
+            createOrder: async function(data, actions) {
+                const amount = document.getElementById('amount').value;
+                const currency = document.getElementById('currency').value;
+
+                if (!amount || parseFloat(amount) <= 0) {
+                    showStatus('Please enter a valid amount', 'error');
+                    return;
+                }
+
+                showStatus('Creating order...', 'info');
+
+                try {
+                    const response = await fetch('/api/payment/create-order', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            amount: amount,
+                            currency: currency
+                        })
+                    });
+
+                    const order = await response.json();
+                    
+                    if (order.error) {
+                        throw new Error(order.error);
+                    }
+
+                    hideStatus();
+                    return order.id;
+                } catch (error) {
+                    showStatus(`Error creating order: ${error.message}`, 'error');
+                    console.error('Error:', error);
+                    throw error;
+                }
+            },
+            onApprove: async function(data, actions) {
+                showStatus('Processing payment...', 'info');
+
+                try {
+                    const response = await fetch('/api/payment/capture-order', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            orderID: data.orderID
+                        })
+                    });
+
+                    const orderData = await response.json();
+                    
+                    if (orderData.error) {
+                        throw new Error(orderData.error);
+                    }
+
+                    showStatus('Payment successful! Order ID: ' + data.orderID, 'success');
+                    console.log('Capture result', orderData);
+                } catch (error) {
+                    showStatus(`Error processing payment: ${error.message}`, 'error');
+                    console.error('Error:', error);
+                }
+            },
+            onError: function(err) {
+                showStatus('An error occurred during the payment process', 'error');
+                console.error('PayPal error:', err);
+            },
+            onCancel: function(data) {
+                showStatus('Payment cancelled by user', 'info');
+            }
+        }).render('#paypal-button-container');
+    </script>
+</body>
+</html>
